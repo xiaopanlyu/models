@@ -141,14 +141,26 @@ def define_performance(num_parallel_calls=True, inter_op=True, intra_op=True,
     flags.DEFINE_string(
         name="all_reduce_alg", short_name="ara", default=None,
         help=help_wrap("Defines the algorithm to use for performing all-reduce."
-                       "See tf.contrib.distribute.AllReduceCrossTowerOps for "
-                       "more details and available options."))
+                       "When specified with MirroredStrategy for single "
+                       "worker, this controls "
+                       "tf.contrib.distribute.AllReduceCrossTowerOps.  When "
+                       "specified with MultiWorkerMirroredStrategy, this "
+                       "controls "
+                       "tf.distribute.experimental.CollectiveCommunication; "
+                       "valid options are `ring` and `nccl`."))
 
   if tf_gpu_thread_mode:
     flags.DEFINE_string(
         name="tf_gpu_thread_mode", short_name="gt_mode", default=None,
         help=help_wrap(
             "Whether and how the GPU device uses its own threadpool.")
+    )
+
+    flags.DEFINE_integer(
+        name="per_gpu_thread_count", short_name="pgtc", default=0,
+        help=help_wrap(
+            "The number of threads to use for GPU. Only valid when "
+            "tf_gpu_thread_mode is not global.")
     )
 
   if datasets_num_private_threads:
