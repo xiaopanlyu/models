@@ -1,5 +1,9 @@
 # DeepLab: Deep Labelling for Semantic Image Segmentation
 
+**To new and existing DeepLab users**: We have released a unified codebase for
+dense pixel labeling tasks in TensorFlow2 at https://github.com/google-research/deeplab2.
+Please consider switching to the newer codebase for better support. 
+
 DeepLab is a state-of-art deep learning model for semantic image segmentation,
 where the goal is to assign semantic labels (e.g., person, dog, cat and so on)
 to every pixel in the input image. Current implementation includes the following
@@ -52,6 +56,17 @@ works:
 }
 ```
 
+*   MobileNetv3:
+
+```
+@inproceedings{mobilenetv32019,
+  title={Searching for MobileNetV3},
+  author={Andrew Howard and Mark Sandler and Grace Chu and Liang-Chieh Chen and Bo Chen and Mingxing Tan and Weijun Wang and Yukun Zhu and Ruoming Pang and Vijay Vasudevan and Quoc V. Le and Hartwig Adam},
+  booktitle={ICCV},
+  year={2019}
+}
+```
+
 *  Architecture search for dense prediction cell:
 
 ```
@@ -82,7 +97,8 @@ Image Segmentation},
 In the current implementation, we support adopting the following network
 backbones:
 
-1.  MobileNetv2 [8]: A fast network structure designed for mobile devices.
+1.  MobileNetv2 [8] and MobileNetv3 [16]: A fast network structure designed
+    for mobile devices.
 
 2.  Xception [9, 10]: A powerful network structure intended for server-side
     deployment.
@@ -157,6 +173,26 @@ under tensorflow/models. Please refer to the LICENSE for details.
 
 ## Change Logs
 
+### March 26, 2020
+* Supported EdgeTPU-DeepLab and EdgeTPU-DeepLab-slim on Cityscapes.
+**Contributor**: Yun Long.
+
+### November 20, 2019
+* Supported MobileNetV3 large and small model variants on Cityscapes.
+**Contributor**: Yukun Zhu.
+
+
+### March 27, 2019
+
+* Supported using different loss weights on different classes during training.
+**Contributor**: Yuwei Yang.
+
+
+### March 26, 2019
+
+* Supported ResNet-v1-18. **Contributor**: Michalis Raptis.
+
+
 ### March 6, 2019
 
 * Released the evaluation code (under the `evaluation` folder) for image
@@ -214,7 +250,7 @@ PASCAL VOC 2012 and Cityscapes.
 ### March 5, 2018
 
 * First release of DeepLab in TensorFlow including deeper Xception network
-backbone. Included chekcpoints that have been pretrained on PASCAL VOC 2012
+backbone. Included checkpoints that have been pretrained on PASCAL VOC 2012
 and Cityscapes.
 
 ## References
@@ -283,3 +319,7 @@ and Cityscapes.
 15. **Progressive Neural Architecture Search**<br />
     Chenxi Liu, Barret Zoph, Maxim Neumann, Jonathon Shlens, Wei Hua, Li-Jia Li, Li Fei-Fei, Alan Yuille, Jonathan Huang, Kevin Murphy. <br />
     [[link]](https://arxiv.org/abs/1712.00559). In ECCV, 2018.
+
+16. **Searching for MobileNetV3**<br />
+    Andrew Howard, Mark Sandler, Grace Chu, Liang-Chieh Chen, Bo Chen, Mingxing Tan, Weijun Wang, Yukun Zhu, Ruoming Pang, Vijay Vasudevan, Quoc V. Le, Hartwig Adam. <br />
+    [[link]](https://arxiv.org/abs/1905.02244). In ICCV, 2019.

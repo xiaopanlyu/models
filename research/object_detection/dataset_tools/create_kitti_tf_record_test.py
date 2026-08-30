@@ -19,7 +19,8 @@ import os
 
 import numpy as np
 import PIL.Image
-import tensorflow as tf
+import six
+import tensorflow.compat.v1 as tf
 
 from object_detection.dataset_tools import create_kitti_tf_record
 
@@ -38,7 +39,7 @@ class CreateKittiTFRecordTest(tf.test.TestCase):
 
   def test_dict_to_tf_example(self):
     image_file_name = 'tmp_image.jpg'
-    image_data = np.random.rand(256, 256, 3)
+    image_data = np.random.randint(0, 256, (256, 256, 3), dtype=np.uint8)
     save_path = os.path.join(self.get_temp_dir(), image_file_name)
     image = PIL.Image.fromarray(image_data, 'RGB')
     image.save(save_path)
@@ -75,12 +76,13 @@ class CreateKittiTFRecordTest(tf.test.TestCase):
         example.features.feature['image/width'].int64_list.value, [256])
     self._assertProtoEqual(
         example.features.feature['image/filename'].bytes_list.value,
-        [save_path])
+        [six.b(save_path)])
     self._assertProtoEqual(
         example.features.feature['image/source_id'].bytes_list.value,
-        [save_path])
+        [six.b(save_path)])
     self._assertProtoEqual(
-        example.features.feature['image/format'].bytes_list.value, ['png'])
+        example.features.feature['image/format'].bytes_list.value,
+        [six.b('png')])
     self._assertProtoEqual(
         example.features.feature['image/object/bbox/xmin'].float_list.value,
         [0.25])
@@ -95,7 +97,7 @@ class CreateKittiTFRecordTest(tf.test.TestCase):
         [0.75])
     self._assertProtoEqual(
         example.features.feature['image/object/class/text'].bytes_list.value,
-        ['car'])
+        [six.b('car')])
     self._assertProtoEqual(
         example.features.feature['image/object/class/label'].int64_list.value,
         [1])

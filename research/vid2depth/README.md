@@ -1,3 +1,6 @@
+![TensorFlow Requirement: 1.x](https://img.shields.io/badge/TensorFlow%20Requirement-1.x-brightgreen)
+![TensorFlow 2 Not Supported](https://img.shields.io/badge/TensorFlow%202%20Not%20Supported-%E2%9C%95-red.svg)
+
 # vid2depth
 
 **Unsupervised Learning of Depth and Ego-Motion from Monocular Video Using 3D Geometric Constraints**
@@ -18,6 +21,11 @@ ArXiv: [https://arxiv.org/pdf/1802.05522.pdf](https://arxiv.org/pdf/1802.05522.p
 <a href="https://sites.google.com/view/vid2depth"><img src='https://storage.googleapis.com/vid2depth/media/approach.png' width=400></a>
 </p>
 
+## Update: TF2 version.
+
+Please see [https://github.com/IAMAl/vid2depth_tf2](https://github.com/IAMAl/vid2depth_tf2)
+for a TF2 implementation of vid2depth.
+
 ## 1. Installation
 
 ### Requirements
@@ -33,10 +41,6 @@ pip install scipy
 pip install tensorflow
 ```
 
-#### For building the ICP op (work in progress)
-
-* Bazel: https://bazel.build/
-
 ### Download vid2depth
 
 ```shell
@@ -50,24 +54,31 @@ git clone --depth 1 https://github.com/tensorflow/models.git
 ```shell
 mkdir -p ~/vid2depth/kitti-raw-uncompressed
 cd ~/vid2depth/kitti-raw-uncompressed
-wget https://github.com/mrharicot/monodepth/blob/master/utils/kitti_archives_to_download.txt
+wget https://raw.githubusercontent.com/mrharicot/monodepth/master/utils/kitti_archives_to_download.txt
 wget -i kitti_archives_to_download.txt
 unzip "*.zip"
 ```
 
 ### Download Cityscapes dataset (110GB) (optional)
 
-You will need to register in order to download the data.  Download the following files:
+You will need to register in order to download the data.  Download the following
+files:
 
 * leftImg8bit_sequence_trainvaltest.zip
 * camera_trainvaltest.zip
 
-### Download Bike dataset (17GB) (optional)
+### Download Bike dataset (34GB) (optional)
+
+Please see [https://research.google/tools/datasets/bike-video/](https://research.google/tools/datasets/bike-video/)
+for info on the bike video dataset.
+
+Special thanks to [Guangming Wang](https://guangmingw.github.io/) for helping us
+restore this dataset after it was accidentally deleted.
 
 ```shell
 mkdir -p ~/vid2depth/bike-uncompressed
 cd ~/vid2depth/bike-uncompressed
-wget https://storage.googleapis.com/brain-robotics-data/bike/BikeVideoDataset.tar
+wget https://storage.googleapis.com/vid2depth/dataset/BikeVideoDataset.tar
 tar xvf BikeVideoDataset.tar
 ```
 
@@ -89,7 +100,7 @@ cd tensorflow/models/research/vid2depth
 python inference.py \
   --kitti_dir ~/vid2depth/kitti-raw-uncompressed \
   --output_dir ~/vid2depth/inference \
-  --video 2011_09_26/2011_09_26_drive_0009_sync \
+  --kitti_video 2011_09_26/2011_09_26_drive_0009_sync \
   --model_ckpt ~/vid2depth/trained-model/model-119496
 ```
 
@@ -131,23 +142,16 @@ python dataset/gen_data.py \
   --seq_length 3
 ```
 
-### Compile the ICP op (work in progress)
+### Compile the ICP op
 
-The ICP op depends on multiple software packages (TensorFlow, Point Cloud
-Library, FLANN, Boost, HDF5).  The Bazel build system requires individual BUILD
-files for each of these packages.  We have included a partial implementation of
-these BUILD files inside the third_party directory.  But they are not ready for
-compiling the op.  If you manage to build the op, please let us know so we can
-include your contribution.
+The pre-trained model is trained using the ICP loss.  It is possible to run
+inference on this pre-trained model without compiling the ICP op.  It is also
+possible to train a new model from scratch without compiling the ICP op by
+setting the icp loss to zero.
 
-```shell
-cd tensorflow/models/research/vid2depth
-bazel build ops:pcl_demo  # Build test program using PCL only.
-bazel build ops:icp_op.so
-```
-
-For the time being, it is possible to run inference on the pre-trained model and
-run training without the icp loss.
+If you would like to compile the op and run a new training job using it, please
+use the CMakeLists.txt file at
+[https://github.com/IAMAl/vid2depth_tf2/tree/master/ops](https://github.com/IAMAl/vid2depth_tf2/tree/master/ops).
 
 ### Run training
 

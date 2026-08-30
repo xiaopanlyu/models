@@ -20,7 +20,7 @@ import numpy as np
 
 from pycocotools import mask
 
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.metrics import coco_tools
 
@@ -80,8 +80,8 @@ class CocoToolsTest(tf.test.TestCase):
 
   def testExportGroundtruthToCOCO(self):
     image_ids = ['first', 'second']
-    groundtruth_boxes = [np.array([[100, 100, 200, 200]], np.float),
-                         np.array([[50, 50, 100, 100]], np.float)]
+    groundtruth_boxes = [np.array([[100, 100, 200, 200]], float),
+                         np.array([[50, 50, 100, 100]], float)]
     groundtruth_classes = [np.array([1], np.int32), np.array([1], np.int32)]
     categories = [{'id': 0, 'name': 'person'},
                   {'id': 1, 'name': 'cat'},
@@ -104,9 +104,9 @@ class CocoToolsTest(tf.test.TestCase):
 
   def testExportDetectionsToCOCO(self):
     image_ids = ['first', 'second']
-    detections_boxes = [np.array([[100, 100, 200, 200]], np.float),
-                        np.array([[50, 50, 100, 100]], np.float)]
-    detections_scores = [np.array([.8], np.float), np.array([.7], np.float)]
+    detections_boxes = [np.array([[100, 100, 200, 200]], float),
+                        np.array([[50, 50, 100, 100]], float)]
+    detections_scores = [np.array([.8], float), np.array([.7], float)]
     detections_classes = [np.array([1], np.int32), np.array([1], np.int32)]
     categories = [{'id': 0, 'name': 'person'},
                   {'id': 1, 'name': 'cat'},
@@ -139,7 +139,7 @@ class CocoToolsTest(tf.test.TestCase):
     for i, detection_mask in enumerate(detection_masks):
       detection_masks[i] = detection_mask[:, :, :, None]
 
-    detection_scores = [np.array([.8], np.float), np.array([.7], np.float)]
+    detection_scores = [np.array([.8], float), np.array([.7], float)]
     detection_classes = [np.array([1], np.int32), np.array([1], np.int32)]
 
     categories = [{'id': 0, 'name': 'person'},
@@ -170,8 +170,8 @@ class CocoToolsTest(tf.test.TestCase):
             [[[110, 210], [310, 410], [510, 610]],
              [[60, 160], [260, 360], [460, 560]]], dtype=np.int32)]
 
-    detection_scores = [np.array([.8, 0.2], np.float),
-                        np.array([.7, 0.3], np.float)]
+    detection_scores = [np.array([.8, 0.2], float),
+                        np.array([.7, 0.3], float)]
     detection_classes = [np.array([1, 1], np.int32), np.array([1, 1], np.int32)]
 
     categories = [{'id': 1, 'name': 'person', 'num_keypoints': 3},
@@ -289,6 +289,116 @@ class CocoToolsTest(tf.test.TestCase):
       self.assertEqual(annotation['category_id'], classes[i])
       self.assertEqual(annotation['iscrowd'], is_crowd[i])
       self.assertEqual(annotation['id'], i + next_annotation_id)
+
+  def testSingleImageGroundtruthExportWithKeypoints(self):
+    boxes = np.array([[0, 0, 1, 1],
+                      [0, 0, .5, .5],
+                      [.5, .5, 1, 1]], dtype=np.float32)
+    coco_boxes = np.array([[0, 0, 1, 1],
+                           [0, 0, .5, .5],
+                           [.5, .5, .5, .5]], dtype=np.float32)
+    keypoints = np.array([[[0, 0], [0.25, 0.25], [0.75, 0.75]],
+                          [[0, 0], [0.125, 0.125], [0.375, 0.375]],
+                          [[0.5, 0.5], [0.75, 0.75], [1.0, 1.0]]],
+                         dtype=np.float32)
+    visibilities = np.array([[2, 2, 2],
+                             [2, 2, 0],
+                             [2, 0, 0]], dtype=np.int32)
+    areas = np.array([15., 16., 17.])
+
+    classes = np.array([1, 2, 3], dtype=np.int32)
+    is_crowd = np.array([0, 1, 0], dtype=np.int32)
+    next_annotation_id = 1
+
+    # Tests exporting without passing in is_crowd (for backward compatibility).
+    coco_annotations = coco_tools.ExportSingleImageGroundtruthToCoco(
+        image_id='first_image',
+        category_id_set=set([1, 2, 3]),
+        next_annotation_id=next_annotation_id,
+        groundtruth_boxes=boxes,
+        groundtruth_classes=classes,
+        groundtruth_keypoints=keypoints,
+        groundtruth_keypoint_visibilities=visibilities,
+        groundtruth_area=areas)
+    for i, annotation in enumerate(coco_annotations):
+      self.assertTrue(np.all(np.isclose(annotation['bbox'], coco_boxes[i])))
+      self.assertEqual(annotation['image_id'], 'first_image')
+      self.assertEqual(annotation['category_id'], classes[i])
+      self.assertEqual(annotation['id'], i + next_annotation_id)
+      self.assertEqual(annotation['num_keypoints'], 3 - i)
+      self.assertEqual(annotation['area'], 15.0 + i)
+      self.assertTrue(
+          np.all(np.isclose(annotation['keypoints'][0::3], keypoints[i, :, 1])))
+      self.assertTrue(
+          np.all(np.isclose(annotation['keypoints'][1::3], keypoints[i, :, 0])))
+      self.assertTrue(
+          np.all(np.equal(annotation['keypoints'][2::3], visibilities[i])))
+
+    # Tests exporting with is_crowd.
+    coco_annotations = coco_tools.ExportSingleImageGroundtruthToCoco(
+        image_id='first_image',
+        category_id_set=set([1, 2, 3]),
+        next_annotation_id=next_annotation_id,
+        groundtruth_boxes=boxes,
+        groundtruth_classes=classes,
+        groundtruth_keypoints=keypoints,
+        groundtruth_keypoint_visibilities=visibilities,
+        groundtruth_is_crowd=is_crowd)
+    for i, annotation in enumerate(coco_annotations):
+      self.assertTrue(np.all(np.isclose(annotation['bbox'], coco_boxes[i])))
+      self.assertEqual(annotation['image_id'], 'first_image')
+      self.assertEqual(annotation['category_id'], classes[i])
+      self.assertEqual(annotation['iscrowd'], is_crowd[i])
+      self.assertEqual(annotation['id'], i + next_annotation_id)
+      self.assertEqual(annotation['num_keypoints'], 3 - i)
+      self.assertTrue(
+          np.all(np.isclose(annotation['keypoints'][0::3], keypoints[i, :, 1])))
+      self.assertTrue(
+          np.all(np.isclose(annotation['keypoints'][1::3], keypoints[i, :, 0])))
+      self.assertTrue(
+          np.all(np.equal(annotation['keypoints'][2::3], visibilities[i])))
+      # Testing the area values are derived from the bounding boxes.
+      if i == 0:
+        self.assertAlmostEqual(annotation['area'], 1.0)
+      else:
+        self.assertAlmostEqual(annotation['area'], 0.25)
+
+  def testSingleImageDetectionBoxesExportWithKeypoints(self):
+    boxes = np.array([[0, 0, 1, 1], [0, 0, .5, .5], [.5, .5, 1, 1]],
+                     dtype=np.float32)
+    coco_boxes = np.array([[0, 0, 1, 1], [0, 0, .5, .5], [.5, .5, .5, .5]],
+                          dtype=np.float32)
+    keypoints = np.array([[[0, 0], [0.25, 0.25], [0.75, 0.75]],
+                          [[0, 0], [0.125, 0.125], [0.375, 0.375]],
+                          [[0.5, 0.5], [0.75, 0.75], [1.0, 1.0]]],
+                         dtype=np.float32)
+    visibilities = np.array([[2, 2, 2], [2, 2, 2], [2, 2, 2]], dtype=np.int32)
+
+    classes = np.array([1, 2, 3], dtype=np.int32)
+    scores = np.array([0.8, 0.2, 0.7], dtype=np.float32)
+
+    # Tests exporting without passing in is_crowd (for backward compatibility).
+    coco_annotations = coco_tools.ExportSingleImageDetectionBoxesToCoco(
+        image_id='first_image',
+        category_id_set=set([1, 2, 3]),
+        detection_boxes=boxes,
+        detection_scores=scores,
+        detection_classes=classes,
+        detection_keypoints=keypoints,
+        detection_keypoint_visibilities=visibilities)
+    for i, annotation in enumerate(coco_annotations):
+      self.assertTrue(np.all(np.isclose(annotation['bbox'], coco_boxes[i])))
+      self.assertEqual(annotation['image_id'], 'first_image')
+      self.assertEqual(annotation['category_id'], classes[i])
+      self.assertTrue(np.all(np.isclose(annotation['bbox'], coco_boxes[i])))
+      self.assertEqual(annotation['score'], scores[i])
+      self.assertEqual(annotation['num_keypoints'], 3)
+      self.assertTrue(
+          np.all(np.isclose(annotation['keypoints'][0::3], keypoints[i, :, 1])))
+      self.assertTrue(
+          np.all(np.isclose(annotation['keypoints'][1::3], keypoints[i, :, 0])))
+      self.assertTrue(
+          np.all(np.equal(annotation['keypoints'][2::3], visibilities[i])))
 
 
 if __name__ == '__main__':

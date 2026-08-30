@@ -26,6 +26,7 @@ Example usage:
         --output_dir=/home/user/pet/output
 """
 
+import contextlib
 import hashlib
 import io
 import logging
@@ -33,11 +34,10 @@ import os
 import random
 import re
 
-import contextlib2
 from lxml import etree
 import numpy as np
 import PIL.Image
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.dataset_tools import tf_record_creation_util
 from object_detection.utils import dataset_util
@@ -233,7 +233,7 @@ def create_tf_record(output_filename,
     mask_type: 'numerical' or 'png'. 'png' is recommended because it leads to
       smaller file sizes.
   """
-  with contextlib2.ExitStack() as tf_record_close_stack:
+  with contextlib.ExitStack() as tf_record_close_stack:
     output_tfrecords = tf_record_creation_util.open_sharded_output_tfrecords(
         tf_record_close_stack, output_filename, num_shards)
     for idx, example in enumerate(examples):

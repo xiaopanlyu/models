@@ -1,4 +1,4 @@
-# Copyright 2018 The TensorFlow Authors. All Rights Reserved.
+# Copyright 2026 The TensorFlow Authors. All Rights Reserved.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,7 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-# ==============================================================================
+
 """Test NCF data pipeline."""
 
 from __future__ import absolute_import
@@ -23,15 +23,15 @@ import hashlib
 import os
 
 import mock
+
 import numpy as np
 import scipy.stats
-import tensorflow as tf
+import tensorflow as tf, tf_keras
 
-from official.datasets import movielens
 from official.recommendation import constants as rconst
 from official.recommendation import data_preprocessing
+from official.recommendation import movielens
 from official.recommendation import popen_helper
-
 
 DATASET = "ml-test"
 NUM_USERS = 1000
@@ -41,7 +41,6 @@ BATCH_SIZE = 2048
 EVAL_BATCH_SIZE = 4000
 NUM_NEG = 4
 
-
 END_TO_END_TRAIN_MD5 = "b218738e915e825d03939c5e305a2698"
 END_TO_END_EVAL_MD5 = "d753d0f3186831466d6e218163a9501e"
 FRESH_RANDOMNESS_MD5 = "63d0dff73c0e5f1048fbdc8c65021e22"
@@ -50,15 +49,18 @@ FRESH_RANDOMNESS_MD5 = "63d0dff73c0e5f1048fbdc8c65021e22"
 def mock_download(*args, **kwargs):
   return
 
+
 # The forkpool used by data producers interacts badly with the threading
 # used by TestCase. Without this patch tests will hang, and no amount
 # of diligent closing and joining within the producer will prevent it.
 @mock.patch.object(popen_helper, "get_forkpool", popen_helper.get_fauxpool)
 class BaseTest(tf.test.TestCase):
+
   def setUp(self):
+    tf.compat.v1.disable_eager_execution()
     self.temp_data_dir = self.get_temp_dir()
     ratings_folder = os.path.join(self.temp_data_dir, DATASET)
-    tf.gfile.MakeDirs(ratings_folder)
+    tf.io.gfile.makedirs(ratings_folder)
     np.random.seed(0)
     raw_user_ids = np.arange(NUM_USERS * 3)
     np.random.shuffle(raw_user_ids)
@@ -76,7 +78,7 @@ class BaseTest(tf.test.TestCase):
     self.rating_file = os.path.join(ratings_folder, movielens.RATINGS_FILE)
     self.seen_pairs = set()
     self.holdout = {}
-    with tf.gfile.Open(self.rating_file, "w") as f:
+    with tf.io.gfile.GFile(self.rating_file, "w") as f:
       f.write("user_id,item_id,rating,timestamp\n")
       for usr, itm, scr, ts in zip(users, items, scores, times):
         pair = (usr, itm)
@@ -90,8 +92,7 @@ class BaseTest(tf.test.TestCase):
 
     movielens.download = mock_download
     movielens.NUM_RATINGS[DATASET] = NUM_PTS
-    data_preprocessing.DATASET_TO_NUM_USERS_AND_ITEMS[DATASET] = (NUM_USERS,
-                                                                  NUM_ITEMS)
+    movielens.DATASET_TO_NUM_USERS_AND_ITEMS[DATASET] = (NUM_USERS, NUM_ITEMS)
 
   def make_params(self, train_epochs=1):
     return {
@@ -104,6 +105,7 @@ class BaseTest(tf.test.TestCase):
         "match_mlperf": True,
         "use_tpu": False,
         "use_xla_for_gpu": False,
+        "stream_files": False,
     }
 
   def test_preprocessing(self):
@@ -119,9 +121,9 @@ class BaseTest(tf.test.TestCase):
 
   def drain_dataset(self, dataset, g):
     # type: (tf.data.Dataset, tf.Graph) -> list
-    with self.test_session(graph=g) as sess:
+    with self.session(graph=g) as sess:
       with g.as_default():
-        batch = dataset.make_one_shot_iterator().get_next()
+        batch = tf.compat.v1.data.make_one_shot_iterator(dataset).get_next()
       output = []
       while True:
         try:
@@ -133,8 +135,11 @@ class BaseTest(tf.test.TestCase):
   def _test_end_to_end(self, constructor_type):
     params = self.make_params(train_epochs=1)
     _, _, producer = data_preprocessing.instantiate_pipeline(
-        dataset=DATASET, data_dir=self.temp_data_dir, params=params,
-        constructor_type=constructor_type, deterministic=True)
+        dataset=DATASET,
+        data_dir=self.temp_data_dir,
+        params=params,
+        constructor_type=constructor_type,
+        deterministic=True)
 
     producer.start()
     producer.join()
@@ -162,8 +167,11 @@ class BaseTest(tf.test.TestCase):
     md5 = hashlib.md5()
     for features, labels in first_epoch:
       data_list = [
-          features[movielens.USER_COLUMN], features[movielens.ITEM_COLUMN],
-          features[rconst.VALID_POINT_MASK], labels]
+          features[movielens.USER_COLUMN].flatten(),
+          features[movielens.ITEM_COLUMN].flatten(),
+          features[rconst.VALID_POINT_MASK].flatten(),
+          labels.flatten()
+      ]
       for i in data_list:
         md5.update(i.tobytes())
 
@@ -182,7 +190,7 @@ class BaseTest(tf.test.TestCase):
         train_examples[l].add((u_raw, i_raw))
         counts[(u_raw, i_raw)] += 1
 
-    self.assertRegexpMatches(md5.hexdigest(), END_TO_END_TRAIN_MD5)
+    self.assertRegex(md5.hexdigest(), END_TO_END_TRAIN_MD5)
 
     num_positives_seen = len(train_examples[True])
     self.assertEqual(producer._train_pos_users.shape[0], num_positives_seen)
@@ -210,8 +218,10 @@ class BaseTest(tf.test.TestCase):
     md5 = hashlib.md5()
     for features in eval_data:
       data_list = [
-          features[movielens.USER_COLUMN], features[movielens.ITEM_COLUMN],
-          features[rconst.DUPLICATE_MASK]]
+          features[movielens.USER_COLUMN].flatten(),
+          features[movielens.ITEM_COLUMN].flatten(),
+          features[rconst.DUPLICATE_MASK].flatten()
+      ]
       for i in data_list:
         md5.update(i.tobytes())
 
@@ -244,14 +254,17 @@ class BaseTest(tf.test.TestCase):
           # from the negatives.
           assert (u_raw, i_raw) not in self.seen_pairs
 
-    self.assertRegexpMatches(md5.hexdigest(), END_TO_END_EVAL_MD5)
+    self.assertRegex(md5.hexdigest(), END_TO_END_EVAL_MD5)
 
   def _test_fresh_randomness(self, constructor_type):
     train_epochs = 5
     params = self.make_params(train_epochs=train_epochs)
     _, _, producer = data_preprocessing.instantiate_pipeline(
-        dataset=DATASET, data_dir=self.temp_data_dir, params=params,
-        constructor_type=constructor_type, deterministic=True)
+        dataset=DATASET,
+        data_dir=self.temp_data_dir,
+        params=params,
+        constructor_type=constructor_type,
+        deterministic=True)
 
     producer.start()
 
@@ -270,8 +283,11 @@ class BaseTest(tf.test.TestCase):
     md5 = hashlib.md5()
     for features, labels in results:
       data_list = [
-          features[movielens.USER_COLUMN], features[movielens.ITEM_COLUMN],
-          features[rconst.VALID_POINT_MASK], labels]
+          features[movielens.USER_COLUMN].flatten(),
+          features[movielens.ITEM_COLUMN].flatten(),
+          features[rconst.VALID_POINT_MASK].flatten(),
+          labels.flatten()
+      ]
       for i in data_list:
         md5.update(i.tobytes())
 
@@ -284,11 +300,11 @@ class BaseTest(tf.test.TestCase):
         else:
           negative_counts[(u, i)] += 1
 
-    self.assertRegexpMatches(md5.hexdigest(), FRESH_RANDOMNESS_MD5)
+    self.assertRegex(md5.hexdigest(), FRESH_RANDOMNESS_MD5)
 
     # The positive examples should appear exactly once each epoch
-    self.assertAllEqual(list(positive_counts.values()),
-                        [train_epochs for _ in positive_counts])
+    self.assertAllEqual(
+        list(positive_counts.values()), [train_epochs for _ in positive_counts])
 
     # The threshold for the negatives is heuristic, but in general repeats are
     # expected, but should not appear too frequently.
@@ -306,8 +322,8 @@ class BaseTest(tf.test.TestCase):
     # The frequency of occurance of a given negative pair should follow an
     # approximately binomial distribution in the limit that the cardinality of
     # the negative pair set >> number of samples per epoch.
-    approx_pdf = scipy.stats.binom.pmf(k=np.arange(train_epochs+1),
-                                       n=train_epochs, p=e_sample)
+    approx_pdf = scipy.stats.binom.pmf(
+        k=np.arange(train_epochs + 1), n=train_epochs, p=e_sample)
 
     # Tally the actual observed counts.
     count_distribution = [0 for _ in range(train_epochs + 1)]
@@ -341,5 +357,4 @@ class BaseTest(tf.test.TestCase):
 
 
 if __name__ == "__main__":
-  tf.logging.set_verbosity(tf.logging.INFO)
   tf.test.main()

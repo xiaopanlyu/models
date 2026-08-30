@@ -43,15 +43,14 @@ A local training job using `xception_65` can be run with the following command:
 python deeplab/train.py \
     --logtostderr \
     --training_number_of_steps=90000 \
-    --train_split="train" \
+    --train_split="train_fine" \
     --model_variant="xception_65" \
     --atrous_rates=6 \
     --atrous_rates=12 \
     --atrous_rates=18 \
     --output_stride=16 \
     --decoder_output_stride=4 \
-    --train_crop_size=769 \
-    --train_crop_size=769 \
+    --train_crop_size="769,769" \
     --train_batch_size=1 \
     --dataset="cityscapes" \
     --tf_initial_checkpoint=${PATH_TO_INITIAL_CHECKPOINT} \
@@ -96,15 +95,14 @@ command:
 # From tensorflow/models/research/
 python deeplab/eval.py \
     --logtostderr \
-    --eval_split="val" \
+    --eval_split="val_fine" \
     --model_variant="xception_65" \
     --atrous_rates=6 \
     --atrous_rates=12 \
     --atrous_rates=18 \
     --output_stride=16 \
     --decoder_output_stride=4 \
-    --eval_crop_size=1025 \
-    --eval_crop_size=2049 \
+    --eval_crop_size="1025,2049" \
     --dataset="cityscapes" \
     --checkpoint_dir=${PATH_TO_CHECKPOINT} \
     --eval_logdir=${PATH_TO_EVAL_DIR} \
@@ -123,15 +121,14 @@ command:
 # From tensorflow/models/research/
 python deeplab/vis.py \
     --logtostderr \
-    --vis_split="val" \
+    --vis_split="val_fine" \
     --model_variant="xception_65" \
     --atrous_rates=6 \
     --atrous_rates=12 \
     --atrous_rates=18 \
     --output_stride=16 \
     --decoder_output_stride=4 \
-    --vis_crop_size=1025 \
-    --vis_crop_size=2049 \
+    --vis_crop_size="1025,2049" \
     --dataset="cityscapes" \
     --colormap_type="cityscapes" \
     --checkpoint_dir=${PATH_TO_CHECKPOINT} \

@@ -15,8 +15,12 @@
 
 """Tests for object_detection.utils.np_box_mask_list_test."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.utils import np_box_mask_list
 
@@ -175,7 +179,7 @@ class AddExtraFieldTest(tf.test.TestCase):
     box_mask_list = np_box_mask_list.BoxMaskList(
         box_data=boxes, mask_data=masks)
     expected_num_boxes = 2
-    self.assertEquals(box_mask_list.num_boxes(), expected_num_boxes)
+    self.assertEqual(box_mask_list.num_boxes(), expected_num_boxes)
 
 
 if __name__ == '__main__':

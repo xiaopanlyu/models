@@ -15,8 +15,12 @@
 
 """Tests for object_detection.utils.np_box_list_test."""
 
+from __future__ import absolute_import
+from __future__ import division
+from __future__ import print_function
+
 import numpy as np
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.utils import np_box_list
 
@@ -128,7 +132,7 @@ class AddExtraFieldTest(tf.test.TestCase):
     boxes = np.array([[0., 0., 100., 100.], [10., 30., 50., 70.]], dtype=float)
     boxlist = np_box_list.BoxList(boxes)
     expected_num_boxes = 2
-    self.assertEquals(boxlist.num_boxes(), expected_num_boxes)
+    self.assertEqual(boxlist.num_boxes(), expected_num_boxes)
 
 
 if __name__ == '__main__':

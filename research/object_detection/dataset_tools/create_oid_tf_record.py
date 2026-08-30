@@ -36,11 +36,11 @@ from __future__ import absolute_import
 from __future__ import division
 from __future__ import print_function
 
+import contextlib
 import os
 
-import contextlib2
 import pandas as pd
-import tensorflow as tf
+import tensorflow.compat.v1 as tf
 
 from object_detection.dataset_tools import oid_tfrecord_creation
 from object_detection.dataset_tools import tf_record_creation_util
@@ -91,7 +91,7 @@ def main(_):
 
   tf.logging.log(tf.logging.INFO, 'Found %d images...', len(all_image_ids))
 
-  with contextlib2.ExitStack() as tf_record_close_stack:
+  with contextlib.ExitStack() as tf_record_close_stack:
     output_tfrecords = tf_record_creation_util.open_sharded_output_tfrecords(
         tf_record_close_stack, FLAGS.output_tf_record_path_prefix,
         FLAGS.num_shards)
